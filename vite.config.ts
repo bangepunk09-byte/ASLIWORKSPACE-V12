@@ -57,14 +57,29 @@ export default defineConfig(() => {
         workbox: {
           importScripts: ['/sw-notifications.js'],
           maximumFileSizeToCacheInBytes: 2 * 1024 * 1024,
-          // Precache ONLY the lightweight app shell & icons on first visit so initial bandwidth is never saturated by 5MB+ of lazy route chunks.
-          globPatterns: ['index.html', 'manifest.webmanifest', 'favicon.ico', 'icon.svg', 'apple-touch-icon.png', 'pwa-*.png', 'assets/index-*.css', 'assets/index-*.js', 'assets/vendor-react-*.js', 'assets/rolldown-runtime-*.js'],
+          // Precache ONLY the lightweight static icons & app shell chunks; HTML navigation uses NetworkFirst so every new deploy renders latest UI immediately.
+          globPatterns: ['manifest.webmanifest', 'favicon.ico', 'icon.svg', 'apple-touch-icon.png', 'pwa-*.png', 'assets/*.css', 'assets/index-*.js', 'assets/vendor-react-*.js', 'assets/rolldown-runtime-*.js'],
           globIgnores: ['assets/aistudio/**', 'uploads/**', '**/vendor-pdf*', '**/html2canvas*', '**/vendor-charts*'],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
-          navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//],
+          navigateFallback: null,
           runtimeCaching: [
+            {
+              urlPattern: ({ request }) => request.mode === 'navigate',
+              handler: 'NetworkFirst',
+              options: {
+                cacheName: 'html-nav-cache',
+                networkTimeoutSeconds: 4,
+                expiration: {
+                  maxEntries: 10,
+                  maxAgeSeconds: 60 * 60 * 24,
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
             {
               // Content-hashed Vite JS/CSS chunks are immutable — cache on first visit with zero revalidation latency
               urlPattern: ({ url }) =>
@@ -144,7 +159,7 @@ export default defineConfig(() => {
     },
     build: {
       target: 'es2020',
-      cssCodeSplit: true,
+      cssCodeSplit: false,
       modulePreload: {
         polyfill: false,
         resolveDependencies: (_filename, deps) =>

@@ -12443,14 +12443,15 @@ async function startServer() {
       maxAge: '1y',
       immutable: true,
       setHeaders: (res, filePath) => {
+        const base = path.basename(filePath);
         if (filePath.endsWith('.webmanifest')) {
           res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
-          res.setHeader('Cache-Control', 'no-cache');
-        } else if (path.basename(filePath) === 'sw.js' || path.basename(filePath) === 'registerSW.js') {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        } else if (base === 'sw.js' || base === 'registerSW.js') {
           res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
           res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        } else if (path.basename(filePath) === 'index.html') {
-          res.setHeader('Cache-Control', 'no-cache');
+        } else if (base === 'index.html') {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         }
       }
     }));
@@ -12458,7 +12459,7 @@ async function startServer() {
       if (req.path.endsWith('.webmanifest') || req.path === '/sw.js' || req.path === '/registerSW.js') {
         return res.status(404).end();
       }
-      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       return res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     });
   }
