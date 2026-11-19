@@ -695,7 +695,7 @@ export default function Shell() {
       <OfflineIndicator />
       <div className="fixed inset-0 flex h-[100dvh] max-h-[100dvh] w-full max-w-[100vw] bg-background overflow-hidden overscroll-none print:static print:h-auto print:max-h-none print:overflow-visible">
         <Sidebar compact={compact} setCompact={setCompact} openSearch={() => setSearch(true)} />
-        <div className={`flex h-full max-h-[100dvh] min-w-0 flex-1 flex-col overflow-hidden transition-[margin] duration-200 ${compact ? "md:ml-[76px]" : "md:ml-[248px]"} ${notifOpen ? "md:mr-[320px] xl:md:mr-[360px]" : "md:mr-[60px]"} print:!ml-0 print:!mr-0 print:h-auto print:max-h-none print:overflow-visible`}>
+        <div className={`flex h-full max-h-[100dvh] min-w-0 flex-1 flex-col overflow-hidden transition-[margin] duration-200 ${compact ? "md:ml-[76px]" : "md:ml-[248px]"} md:mr-[60px] print:!ml-0 print:!mr-0 print:h-auto print:max-h-none print:overflow-visible`}>
           {!chatOpen && <MobileNav openSearch={() => setSearch(true)} />}
           <main
             className={`min-w-0 min-h-0 flex-1 w-full max-w-full overflow-x-hidden overscroll-y-contain ${

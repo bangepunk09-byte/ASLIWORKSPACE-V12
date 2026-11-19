@@ -74,12 +74,19 @@ export function NotificationList({ onNavigate }) {
 
   return (
     <div className="flex h-full flex-col" data-testid="notification-list">
-      <div className="flex items-center justify-between gap-2 border-b px-3 py-3 sm:p-4">
-        <div className="min-w-0"><p className="font-bold text-sm sm:text-base">Notifikasi</p><p className="text-[11px] sm:text-xs text-sub">{data ? `${data.unread} belum dibaca` : ""}</p></div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button type="button" onClick={testPopup} className="rounded-full bg-brand/10 text-brand px-2.5 py-1.5 text-[11px] font-bold hover:bg-brand/20 transition-colors cursor-pointer whitespace-nowrap" data-testid="test-popup-header-btn">Uji Popup</button>
-          <button type="button" onClick={() => api.post("/notifications/read-all").then(load).catch(() => {})} className="btn-ghost flex h-9 items-center gap-1 px-2 sm:px-2.5 text-[11px] sm:text-xs font-semibold cursor-pointer whitespace-nowrap" data-testid="mark-all-read-btn"><CheckCheck size={14} /><span className="hidden sm:inline">Tandai </span>Semua</button>
-          <button type="button" onClick={handleClose} className="btn-ghost flex h-9 w-9 items-center justify-center rounded-xl hover:bg-surface2 cursor-pointer" aria-label="Tutup" data-testid="close-notifications-btn"><X size={16} /></button>
+      <div className="flex items-center justify-between gap-2 border-b px-3.5 py-3 flex-nowrap">
+        <div className="flex items-baseline gap-1.5 min-w-0 whitespace-nowrap">
+          <p className="font-bold text-sm text-ink whitespace-nowrap">Notifikasi</p>
+          {data && (
+            <span className="text-[11px] font-medium text-sub whitespace-nowrap">
+              · {data.unread} belum dibaca
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0 whitespace-nowrap">
+          <button type="button" onClick={testPopup} className="rounded-full bg-brand/10 text-brand px-2.5 py-1 text-[11px] font-bold hover:bg-brand/20 transition-colors cursor-pointer whitespace-nowrap" data-testid="test-popup-header-btn">Uji Popup</button>
+          <button type="button" onClick={() => api.post("/notifications/read-all").then(load).catch(() => {})} className="btn-ghost flex h-8 items-center gap-1 px-2 text-[11px] font-semibold cursor-pointer whitespace-nowrap" data-testid="mark-all-read-btn"><CheckCheck size={14} /><span className="hidden sm:inline">Tandai </span>Semua</button>
+          <button type="button" onClick={handleClose} className="btn-ghost flex h-8 w-8 items-center justify-center rounded-xl hover:bg-surface2 cursor-pointer shrink-0" aria-label="Tutup" data-testid="close-notifications-btn"><X size={16} /></button>
         </div>
       </div>
       <div className="flex gap-1.5 overflow-x-auto border-b px-3 sm:px-4 py-2 no-scrollbar">{cats.filter(Boolean).map((c) => <button key={`notif-cat-${c}`} onClick={() => setCat(c)} className={`h-7 whitespace-nowrap rounded-full px-3 text-[11px] font-semibold transition-colors cursor-pointer ${cat === c ? "bg-brand text-white shadow-xs" : "bg-surface2 text-sub hover:text-ink"}`} data-testid={`notif-cat-${c}`}>{CAT_LABELS[c] || c}</button>)}</div>
@@ -100,15 +107,84 @@ export function NotificationList({ onNavigate }) {
 
 export function NotificationRail({ open, setOpen }) {
   const { unread } = useApp();
+  const [ready, setReady] = useState(open);
+
+  useEffect(() => {
+    if (open && !ready) setReady(true);
+  }, [open, ready]);
+
+  // Pre-mount NotificationList gently during browser idle time so the very first open has zero mount jank
+  useEffect(() => {
+    if (ready) return undefined;
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const id = window.requestIdleCallback(() => setReady(true), { timeout: 1500 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const timer = window.setTimeout(() => setReady(true), 800);
+    return () => window.clearTimeout(timer);
+  }, [ready]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open, setOpen]);
+
+  const shouldRenderList = ready || open;
+
   return (
-    <aside className="fixed inset-y-0 right-0 z-40 hidden h-screen shrink-0 md:flex" data-testid="notification-rail">
-      {open && <div className="h-screen w-[320px] border-l bg-surface shadow-2xl xl:w-[360px]" data-testid="notification-panel"><NotificationList onNavigate={() => setOpen(false)} /></div>}
-      <div className="flex w-[60px] flex-col items-center border-l bg-sidebar pt-4 shadow-sm">
-        <button onClick={() => setOpen(!open)} className={`relative flex h-11 w-11 items-center justify-center rounded-2xl ${open ? "tint-accent" : "hover:bg-surface2 text-sub"}`} aria-label="Notifikasi" data-testid="notification-rail-btn">
-          <Bell size={20} className={unread > 0 && !open ? "animate-[float_1.2s_ease-in-out_infinite] text-brand" : ""} />
-          {unread > 0 && <span className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-brand px-1 text-center text-[10px] font-bold leading-[18px] text-white" data-testid="unread-count">{unread > 99 ? "99+" : unread}</span>}
-        </button>
-      </div>
-    </aside>
+    <>
+      <div
+        className={`fixed inset-0 right-[60px] z-30 hidden bg-transparent md:block ${
+          open ? "pointer-events-auto" : "pointer-events-none"
+        }`}
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
+      <aside className="hidden md:block" data-testid="notification-rail">
+        <div
+          className="fixed inset-y-0 right-[60px] z-40 h-screen w-[448px] xl:w-[468px] overflow-hidden pl-12 pointer-events-none"
+          aria-hidden={!open}
+        >
+          <div
+            className={`h-full w-full border-l bg-surface will-change-transform [contain:layout_paint] transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              open
+                ? "translate-x-0 pointer-events-auto shadow-[-14px_0_36px_-6px_rgba(15,23,42,0.14),-4px_0_12px_-2px_rgba(15,23,42,0.06)] dark:shadow-[-16px_0_40px_-6px_rgba(0,0,0,0.55),-4px_0_14px_-2px_rgba(0,0,0,0.35)]"
+                : "translate-x-full pointer-events-none shadow-none"
+            }`}
+            data-testid="notification-panel"
+          >
+            {shouldRenderList && <NotificationList onNavigate={() => setOpen(false)} />}
+          </div>
+        </div>
+        <div className="fixed inset-y-0 right-0 z-50 flex h-screen w-[60px] flex-col items-center border-l bg-sidebar pt-4 shadow-sm">
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            onMouseEnter={() => { if (!ready) setReady(true); }}
+            onFocus={() => { if (!ready) setReady(true); }}
+            className={`relative flex h-11 w-11 items-center justify-center rounded-2xl transition-colors duration-200 cursor-pointer ${
+              open ? "tint-accent" : "hover:bg-surface2 text-sub"
+            }`}
+            aria-label="Notifikasi"
+            aria-expanded={open}
+            data-testid="notification-rail-btn"
+          >
+            <Bell size={20} className={unread > 0 && !open ? "animate-[float_1.2s_ease-in-out_infinite] text-brand" : ""} />
+            {unread > 0 && (
+              <span
+                className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-brand px-1 text-center text-[10px] font-bold leading-[18px] text-white"
+                data-testid="unread-count"
+              >
+                {unread > 99 ? "99+" : unread}
+              </span>
+            )}
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }

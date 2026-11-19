@@ -169,7 +169,7 @@ export default function Schedule() {
   const [selectedDate, setSelectedDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [createOpen, setCreateOpen] = useState(false);
   const [createConfirmOpen, setCreateConfirmOpen] = useState(false);
-  const [viewMode, setViewMode] = useState("all"); // "all", "today", "upcoming", "date"
+  const [viewMode, setViewMode] = useState("today"); // "month", "today", "upcoming", "date"
   const [submitting, setSubmitting] = useState(false);
   const [deleteConfirmMeeting, setDeleteConfirmMeeting] = useState(null);
 
@@ -681,15 +681,17 @@ export default function Schedule() {
   };
 
   const todayStr = format(new Date(), "yyyy-MM-dd");
+  const currentMonthPrefix = todayStr.slice(0, 7);
 
   const filteredMeetings = useMemo(() => {
     return meetings.filter((m) => {
       if (viewMode === "date" && selectedDate) return m.date === selectedDate;
       if (viewMode === "today") return m.date === todayStr;
       if (viewMode === "upcoming") return m.date >= todayStr;
+      if (viewMode === "month") return String(m.date || "").startsWith(currentMonthPrefix);
       return true;
     });
-  }, [meetings, viewMode, selectedDate, todayStr]);
+  }, [meetings, viewMode, selectedDate, todayStr, currentMonthPrefix]);
 
   // Generate 7-day mini calendar strip
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
@@ -806,10 +808,10 @@ export default function Schedule() {
           <div className="inline-flex h-9 sm:h-10 items-center gap-0.5 rounded-full border bg-surface2/80 p-0.5 sm:p-1 max-w-full overflow-x-auto no-scrollbar">
             <button
               type="button"
-              onClick={() => { setViewMode("all"); setSelectedDate(null); }}
-              className={`inline-flex h-7 sm:h-8 shrink-0 items-center justify-center rounded-full px-3 sm:px-4 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${viewMode === "all" ? "bg-brand text-white shadow-xs" : "text-sub hover:text-ink hover:bg-surface"}`}
+              onClick={() => { setViewMode("month"); setSelectedDate(null); }}
+              className={`inline-flex h-7 sm:h-8 shrink-0 items-center justify-center rounded-full px-3 sm:px-4 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${viewMode === "month" ? "bg-brand text-white shadow-xs" : "text-sub hover:text-ink hover:bg-surface"}`}
             >
-              {t("schedule_filter_all", "Semua")}
+              {t("schedule_filter_month", "Bulan")}
             </button>
             <button
               type="button"
@@ -840,9 +842,12 @@ export default function Schedule() {
                 type="button"
                 key={dateStr}
                 onClick={() => {
-                  if (isSelected && viewMode === "date") {
-                    setViewMode("all");
-                    setSelectedDate(null);
+                  if (dateStr === todayStr) {
+                    setSelectedDate(todayStr);
+                    setViewMode("today");
+                  } else if (isSelected && viewMode === "date") {
+                    setViewMode("today");
+                    setSelectedDate(todayStr);
                   } else {
                     setSelectedDate(dateStr);
                     setViewMode("date");
@@ -882,7 +887,7 @@ export default function Schedule() {
                 ? t("schedule_today_meetings", "Pertemuan Hari Ini")
                 : viewMode === "upcoming"
                 ? t("schedule_upcoming_meetings", "Pertemuan Mendatang")
-                : t("schedule_all_meetings", "Semua Pertemuan")}
+                : `Pertemuan Bulan ${format(new Date(), "MMMM yyyy", { locale: localeId })}`}
             </span>
             <span className="rounded-full bg-surface2 px-2 py-0.5 text-xs text-sub font-semibold shrink-0">
               {filteredMeetings.length}
